@@ -14,7 +14,8 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import ttk
 from typing import List, Dict
-
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 
@@ -30,7 +31,13 @@ FIELDNAMES = [
 ]
 
 def get_csv_path() -> str:
-    base_dir = os.path.dirname(os.path.abspath(__file__))
+    """Return path to CSV next to the .exe (or script if running in dev)."""
+    if getattr(sys, 'frozen', False):
+        # Running in a PyInstaller bundle
+        base_dir = os.path.dirname(sys.executable)
+    else:
+        # Running as normal Python script
+        base_dir = os.path.dirname(os.path.abspath(__file__))
     return os.path.join(base_dir, CSV_FILENAME)
 
 def ensure_csv_schema():
@@ -109,6 +116,9 @@ class HealthTracketApp(tk.Tk):
             pass
 
         self._build_ui()
+    
+    def _convert_to_kg(self, weight, percentage):
+        return float(weight) * float(percentage) / 100
 
     def _build_ui(self):
         pad = {"padx": 10, "pady": 6}
@@ -123,7 +133,7 @@ class HealthTracketApp(tk.Tk):
         self.weight_var = tk.StringVar()
         ttk.Entry(frm, textvariable=self.weight_var, width=20).grid(row=1, column=1, sticky="w", **pad)
 
-        ttk.Label(frm, text="Fat mass (kg):").grid(row=2, column=0, sticky="e", **pad)
+        ttk.Label(frm, text="Fat mass %:").grid(row=2, column=0, sticky="e", **pad)
         self.fat_var = tk.StringVar()
         ttk.Entry(frm, textvariable=self.fat_var, width=20).grid(row=2, column=1, sticky="w", **pad)
 
@@ -207,7 +217,7 @@ class HealthTracketApp(tk.Tk):
                     raise ValueError("Date must be in YYYY-MM-DD format (or DD/MM/YYYY, YYYY/MM/DD).")
 
             weight = float(raw["weight_kg"])
-            fat = float(raw["fat_kg"])
+            fat = self._convert_to_kg(float(raw["fat_kg"]), weight)
             muscle = float(raw["muscle_mass_kg"])
             calories = float(raw["calories_kcal"])
             meta_age = int(float(raw["metabolic_age"]))
